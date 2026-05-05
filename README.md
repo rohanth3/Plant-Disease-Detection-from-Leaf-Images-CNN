@@ -7,8 +7,6 @@ A full-stack machine learning web application that identifies plant diseases fro
 The model is trained on the PlantVillage dataset and is capable of classifying **39 different classes** of plant diseases and healthy leaves across various crops including:
 *Apple, Blueberry, Cherry, Corn, Grape, Orange, Peach, Pepper, Potato, Raspberry, Soybean, Squash, Strawberry, and Tomato.*
 
-
-
 ## Technology Stack
 
 **Frontend:**
@@ -23,3 +21,12 @@ The model is trained on the PlantVillage dataset and is capable of classifying *
 - TensorFlow / Keras
 - NumPy & Pillow
 
+## Application Output
+
+### Initial Upload Screen
+![Upload Screen](Output/SS0.png)
+
+### Disease Classification Result
+![Prediction Output](Output/SS1.png)
+
+![Prediction Output](Output/SS2.png)
