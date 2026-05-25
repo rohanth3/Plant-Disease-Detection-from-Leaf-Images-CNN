@@ -1,4 +1,5 @@
 streamlit
-tensorflow
+tensorflow-cpu
+tf-keras
 pillow
 numpy
