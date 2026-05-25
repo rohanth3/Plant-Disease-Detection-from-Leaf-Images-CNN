@@ -224,17 +224,20 @@ def is_plant_image(image):
     v = hsv_array[:, :, 2]
     
     # 1. Broad plant color mask (Brown, Yellow, Green)
-    # PIL Hue: 15 to 90 covers brown, yellow, and green.
-    plant_mask = (h >= 15) & (h <= 90) & (s > 20) & (v > 20)
+    # PIL Hue: 15 to 95 covers brown, yellow, and green.
+    plant_mask = (h >= 15) & (h <= 95) & (s > 20) & (v > 20)
     plant_ratio = np.sum(plant_mask) / (h.shape[0] * h.shape[1])
     
-    # 2. Strict Green mask (Leaves almost always have some distinct green)
-    # PIL Hue: 35 to 85 covers pure green to yellowish-green
-    green_mask = (h >= 35) & (h <= 85) & (s > 30) & (v > 30)
+    # 2. Strict Green mask (Crucial to block golden/brownish backgrounds or wood)
+    # PIL Hue: 45 to 85 STRICTLY covers yellowish-green to pure green.
+    # We increase saturation requirement to avoid grayish-yellows passing as green.
+    green_mask = (h >= 45) & (h <= 85) & (s > 25) & (v > 25)
     green_ratio = np.sum(green_mask) / (h.shape[0] * h.shape[1])
     
-    # 3. Reject if there's no green AND not enough broad plant colors
-    if green_ratio < 0.02 and plant_ratio < 0.20:
+    # 3. Reject if there's almost no STRICT green.
+    # Almost every leaf photo (even diseased ones) has at least 2.5% distinct green.
+    # This completely kills wood desks, gold curtains, skin tones, cardboard, and white posters.
+    if green_ratio < 0.025:
         return False
         
     # 4. Reject mostly grayscale/white/black images
