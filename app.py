@@ -205,7 +205,7 @@ st.markdown(page_css, unsafe_allow_html=True)
 # -----------------
 st.markdown("<h1 class='hero-title'>🌿 Plant Care AI</h1>", unsafe_allow_html=True)
 st.markdown("<p class='hero-subtitle'>Scan To Discover</p>", unsafe_allow_html=True)
-st.markdown("<p class='hero-desc'>Open up a world of possibilities. Upload a leaf to instantly identify its health and diseases.</p>", unsafe_allow_html=True)
+st.markdown("<p class='hero-desc'>Upload a leaf to instantly identify its health and diseases.</p>", unsafe_allow_html=True)
 
 CLASS_NAMES = [
     "Apple Scab", "Apple Black Rot", "Apple Rust", "Apple Healthy",
@@ -353,7 +353,7 @@ if uploaded_file is not None:
         is_valid, error_msg = is_plant_image(image)
         
         if not is_valid:
-            st.error(f"🚫 **Image Rejected:** {error_msg}")
+            st.error(f"**Image Rejected:** {error_msg}")
         else:
             image_array = np.array(image)
             pil_image = Image.fromarray(image_array).resize((224, 224))
