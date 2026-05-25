@@ -9,7 +9,8 @@ import tensorflow as tf
 st.set_page_config(
     page_title="Plant Disease Detection",
     page_icon="🌿",
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
 # Function to load images as base64 for CSS
@@ -23,11 +24,19 @@ def get_base64_of_bin_file(bin_file):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BG_IMG_PATH = os.path.join(BASE_DIR, "frontend", "src", "background", "background.jpg")
 
-# Inject Custom CSS for Glassmorphism and Background
+# Inject Custom CSS for Premium Earthy Glassmorphism
 if os.path.exists(BG_IMG_PATH):
     bg_base64 = get_base64_of_bin_file(BG_IMG_PATH)
     page_bg_img = f'''
     <style>
+    /* Import modern font */
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+    /* Global Typography */
+    html, body, [class*="css"] {{
+        font-family: 'Outfit', sans-serif !important;
+    }}
+
     /* Background Image */
     .stApp {{
         background-image: url("data:image/jpeg;base64,{bg_base64}");
@@ -37,44 +46,107 @@ if os.path.exists(BG_IMG_PATH):
         background-attachment: fixed;
     }}
     
-    /* Glassmorphism container for the main content area */
+    /* Hide Streamlit Branding for cleaner look */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    header {{background-color: transparent !important;}}
+
+    /* Main Container Glassmorphism - Earthy Dark Green */
     .block-container {{
-        background-color: rgba(0, 0, 0, 0.45) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.37) !important;
-        border-radius: 20px !important;
-        padding: 40px !important;
-        margin-top: 50px !important;
-        color: white !important;
+        background-color: rgba(20, 35, 20, 0.75) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(120, 200, 120, 0.25) !important;
+        box-shadow: 0px 12px 40px 0px rgba(0, 0, 0, 0.6) !important;
+        border-radius: 24px !important;
+        padding: 3rem 4rem 4rem 4rem !important;
+        margin-top: 3rem !important;
+        margin-bottom: 3rem !important;
+        max-width: 750px !important;
     }}
 
-    /* Title and text colors */
-    h1, h2, h3, p, label {{
-        color: white !important;
+    /* Text Colors */
+    h1, h2, h3, p, label, span, li {{
+        color: #e8f5e9 !important; /* Soft earthy mint/white */
     }}
     
-    /* Upload Box Styling to match Dropzone */
+    /* Titles alignment */
+    h1 {{
+        text-align: center;
+        font-weight: 700 !important;
+        text-shadow: 0px 2px 10px rgba(0,0,0,0.5);
+        margin-bottom: 5px !important;
+    }}
+    .subtitle {{
+        text-align: center;
+        font-weight: 300;
+        font-size: 1.1rem;
+        margin-bottom: 30px;
+        color: #a5d6a7 !important;
+    }}
+    
+    /* Upload Box Styling */
     .stFileUploader > div > div {{
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border: 2px dashed rgba(255, 255, 255, 0.4) !important;
+        background-color: rgba(77, 153, 0, 0.1) !important;
+        border: 2px dashed rgba(165, 214, 167, 0.5) !important;
         border-radius: 16px !important;
+        transition: all 0.3s ease-in-out;
+        padding: 20px !important;
+    }}
+    .stFileUploader > div > div:hover {{
+        background-color: rgba(77, 153, 0, 0.25) !important;
+        border-color: rgba(165, 214, 167, 0.9) !important;
+        transform: translateY(-2px);
     }}
 
-    /* Header matching the Appbar Green */
-    header[data-testid="stHeader"] {{
-        background-color: rgba(77, 153, 0, 0.75) !important;
-        backdrop-filter: blur(12px) !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    /* Expander Styling */
+    div[data-testid="stExpander"] {{
+        background-color: rgba(0, 0, 0, 0.4) !important;
+        border: 1px solid rgba(165, 214, 167, 0.2) !important;
+        border-radius: 12px !important;
+        margin-bottom: 20px;
+    }}
+    
+    /* Result Card Styling */
+    .result-card {{
+        background: linear-gradient(135deg, rgba(67, 160, 71, 0.85) 0%, rgba(27, 94, 32, 0.9) 100%);
+        padding: 25px;
+        border-radius: 20px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        margin-top: 20px;
+        animation: fadeIn 0.5s ease-in;
+    }}
+    .result-card h2 {{
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+    }}
+    .result-card h4 {{
+        margin: 10px 0 0 0;
+        font-weight: 400;
+        color: #c8e6c9 !important;
+    }}
+    
+    /* Image display rounding */
+    [data-testid="stImage"] img {{
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }}
+
+    @keyframes fadeIn {{
+        from {{ opacity: 0; transform: translateY(10px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
     }}
     </style>
     '''
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
 
-st.title("🌿 Plant Care")
-st.markdown("### Upload a photo of a plant leaf to identify potential diseases.")
+st.markdown("<h1>🌿 Plant Care AI</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Upload a photo of a plant leaf to detect potential diseases.</p>", unsafe_allow_html=True)
 
 CLASS_NAMES = [
     "Apple Scab", "Apple Black Rot", "Apple Rust", "Apple Healthy",
@@ -98,9 +170,8 @@ CLASS_NAMES = [
 # Extract unique species for UI display
 SPECIES_LIST = sorted(list(set([name.split(' ')[0] for name in CLASS_NAMES])))
 
-with st.expander("ℹ️ See Supported Plants / Species"):
+with st.expander("ℹ️ View Supported Plants & Species"):
     st.markdown("Our AI model is specially trained to detect diseases on the following plants. **Please only upload images of leaves from these species:**")
-    # Display in a nice grid or comma separated
     st.write(" • " + " • ".join(SPECIES_LIST))
 
 # Load Model
@@ -137,16 +208,14 @@ def is_plant_image(image):
     green_ratio = np.sum(green_mask) / (h.shape[0] * h.shape[1])
     
     # 3. Reject if there's no green AND not enough broad plant colors
-    # (E.g. a notebook with a few yellow lines on a blanket will fail this)
     if green_ratio < 0.02 and plant_ratio < 0.20:
         return False
         
-    # 4. Reject mostly grayscale/white/black images (like documents, notebooks)
-    # If 75% of the image has very low saturation, it's not a vibrant natural photo
+    # 4. Reject mostly grayscale/white/black images
     if np.percentile(s, 75) < 25:
         return False
     
-    # 5. Check natural texture/variance: Data plots have flat colors (std near 0).
+    # 5. Check natural texture/variance
     if plant_ratio > 0:
         hue_std = np.std(h[plant_mask])
     else:
@@ -158,17 +227,20 @@ def is_plant_image(image):
         
     return True
 
-uploaded_file = st.file_uploader("Click here or Drag and Drop to select an Image", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Click here or drag and drop to select an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Display the uploaded image
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption='', use_container_width=True)
     
-    with st.spinner("Analyzing Image..."):
+    # Display the uploaded image centered
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        st.image(image, use_container_width=True)
+    
+    with st.spinner("Analyzing Leaf Health..."):
         # Validate if image is a plant
         if not is_plant_image(image):
-            st.error("🚫 **Image Rejected:** This doesn't look like a valid plant leaf! Please upload a clear photo of a leaf from one of the supported species.")
+            st.error("🚫 **Image Rejected:** This doesn't look like a natural plant leaf. Please upload a clear photo of a leaf from one of the supported species.")
         else:
             # Preprocess image
             image_array = np.array(image)
@@ -182,5 +254,11 @@ if uploaded_file is not None:
             predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
             confidence = float(np.max(predictions[0]))
             
-            st.markdown(f"<h3 style='text-align: center;'>{predicted_class}</h3>", unsafe_allow_html=True)
-            st.markdown(f"<h4 style='text-align: center; font-weight: normal; color: #e0e0e0;'>Confidence: <b style='color: white;'>{confidence:.2%}</b></h4>", unsafe_allow_html=True)
+            # Display stunning result card
+            result_html = f"""
+            <div class="result-card">
+                <h2>{predicted_class}</h2>
+                <h4>Confidence: <strong style="color: white;">{confidence:.2%}</strong></h4>
+            </div>
+            """
+            st.markdown(result_html, unsafe_allow_html=True)
