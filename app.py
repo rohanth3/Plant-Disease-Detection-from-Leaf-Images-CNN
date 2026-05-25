@@ -200,62 +200,157 @@ with st.expander("ℹ️ View Supported Plants & Species"):
     st.markdown("Our AI model is specially trained to detect diseases on the following plants. **Please only upload images of leaves from these species:**")
     st.write(" • " + " • ".join(SPECIES_LIST))
 
-# Load Model
+# -----------------
+# GATEKEEPER LISTS
+# -----------------
+BLACKLIST = [
+    # Vehicles & Transport
+    "car", "truck", "bus", "boat", "ship", "plane", "aircraft", "bike", 
+    "bicycle", "train", "motorcycle", "cart", "wagon", "scooter", "submarine", "jet",
+    
+    # Electronics & Tech
+    "computer", "laptop", "phone", "monitor", "television", "tv", "camera", 
+    "keyboard", "mouse", "printer", "speaker", "remote", "radio", "clock", "player",
+    
+    # Animals, Insects & Biology
+    "dog", "cat", "bird", "fish", "spider", "snake", "frog", "monkey", 
+    "horse", "cow", "sheep", "elephant", "lion", "tiger", "bear", "insect", 
+    "bug", "beetle", "fly", "bee", "ant", "butterfly", "moth", "worm", 
+    "mammal", "reptile", "amphibian", "crab", "lobster", "snail", "shell",
+    
+    # Humans & Anatomy
+    "person", "man", "woman", "boy", "girl", "people", "face", "hand", "foot",
+    
+    # Clothing & Wearables
+    "shirt", "shoe", "hat", "bag", "glasses", "watch", "coat", "jacket", 
+    "pants", "dress", "skirt", "glove", "sock", "boot", "helmet", "backpack", 
+    "purse", "wallet", "umbrella", "sunglasses",
+    
+    # Furniture & Decor
+    "chair", "table", "bed", "sofa", "couch", "desk", "lamp", "rug", "carpet", 
+    "curtain", "mirror", "cabinet", "shelf", "pillow", "blanket", "shade",
+    
+    # Household & Kitchen (Removed 'pot' as it can mean plant pot)
+    "bottle", "cup", "plate", "sink", "refrigerator", "oven", "stove", 
+    "microwave", "bowl", "fork", "spoon", "knife", "pan", "glass", "mug", 
+    "toaster", "blender", "washer", "dryer", "tub", "toilet",
+    
+    # Buildings & Infrastructure
+    "building", "house", "bridge", "street", "road", "church", "tower", 
+    "castle", "barn", "fence", "wall", "tent", "roof", "window", "door", "store",
+    
+    # Backgrounds & Materials
+    "fabric", "cloth", "velvet", "paper", "plastic", "metal", "wood", 
+    "leather", "rubber", "screen", "mat",
+    
+    # Nature (Non-Plant)
+    "mountain", "ocean", "beach", "desert", "rock", "stone", "sand", "water", 
+    "sea", "lake", "river", "snow", "ice", "cloud", "sky", "dirt", "mud",
+    
+    # Sports & Toys
+    "ball", "bat", "racket", "net", "toy", "game", "doll", "puzzle", "frisbee",
+    
+    # Random Objects & Tools
+    "book", "box", "weapon", "instrument", "tool", "machine", "guitar", 
+    "piano", "drum", "hammer", "drill", "saw", "sword", "gun", "scissors", 
+    "pen", "pencil", "carton", "sign", "flag", "engine", "robot", "match"
+]
+
+PLANT_WORDS = [
+    "leaf", "plant", "tree", "flower", "grass",
+    "forest", "fern", "moss", "cactus", "vine",
+    "herb", "bamboo", "palm", "oak", "maple",
+    "pine", "sunflower", "daisy", "rose",
+    "corn", "wheat", "vegetable", "fruit"
+]
+
+# -----------------
+# LOAD MODELS
+# -----------------
 @st.cache_resource
-def load_model():
+def load_disease_model():
     MODEL_PATH = os.path.join(BASE_DIR, "models")
-    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-    return model
+    return tf.keras.models.load_model(MODEL_PATH, compile=False)
 
-MODEL = load_model()
+@st.cache_resource
+def load_gatekeeper_model():
+    return tf.keras.applications.MobileNetV2(weights='imagenet')
 
+DISEASE_MODEL = load_disease_model()
+GATEKEEPER_MODEL = load_gatekeeper_model()
+
+# -----------------
+# VALIDATION LOGIC
+# -----------------
 def is_plant_image(image):
     """
-    Advanced heuristic to check if an image is a natural plant.
-    Checks for plant color ranges, green presence, natural texture, and saturation.
+    Advanced heuristic and AI gatekeeper to check if an image is a natural plant.
+    1. Fast Color Heuristic
+    2. Deep Learning Semantic Check (MobileNetV2)
     """
-    # Convert image to HSV
+    # ==========================
+    # STEP 1: FAST COLOR CHECK
+    # ==========================
     hsv_image = image.convert('HSV')
     hsv_array = np.array(hsv_image)
     
-    # Extract Hue, Saturation, Value channels
     h = hsv_array[:, :, 0]
     s = hsv_array[:, :, 1]
     v = hsv_array[:, :, 2]
     
-    # 1. Broad plant color mask (Brown, Yellow, Green)
-    # PIL Hue: 15 to 95 covers brown, yellow, and green.
     plant_mask = (h >= 15) & (h <= 95) & (s > 20) & (v > 20)
     plant_ratio = np.sum(plant_mask) / (h.shape[0] * h.shape[1])
     
-    # 2. Strict Green mask (Crucial to block golden/brownish backgrounds or wood)
-    # PIL Hue: 45 to 85 STRICTLY covers yellowish-green to pure green.
-    # We increase saturation requirement to avoid grayish-yellows passing as green.
     green_mask = (h >= 45) & (h <= 85) & (s > 25) & (v > 25)
     green_ratio = np.sum(green_mask) / (h.shape[0] * h.shape[1])
     
-    # 3. Reject if there's almost no STRICT green.
-    # Almost every leaf photo (even diseased ones) has at least 2.5% distinct green.
-    # This completely kills wood desks, gold curtains, skin tones, cardboard, and white posters.
+    # Reject obvious non-plants based on color
     if green_ratio < 0.025:
-        return False
-        
-    # 4. Reject mostly grayscale/white/black images
+        return False, "This doesn't look like a natural plant leaf (Missing distinct green colors)."
     if np.percentile(s, 75) < 25:
-        return False
-    
-    # 5. Check natural texture/variance
+        return False, "This doesn't look like a natural plant leaf (Image is mostly colorless/grayscale)."
     if plant_ratio > 0:
         hue_std = np.std(h[plant_mask])
     else:
         hue_std = 0
-
-    # Require color variance to reject flat synthetic colors
     if hue_std < 2.0:
-        return False
-        
-    return True
+        return False, "This doesn't look like a natural plant leaf (Colors are flat and synthetic)."
 
+    # ==========================
+    # STEP 2: AI SEMANTIC CHECK
+    # ==========================
+    # Preprocess for MobileNetV2
+    img_resized = image.resize((224, 224))
+    img_array = tf.keras.preprocessing.image.img_to_array(img_resized)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_preprocessed = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+
+    # Predict using ImageNet gatekeeper
+    preds = GATEKEEPER_MODEL.predict(img_preprocessed)
+    top_5 = tf.keras.applications.mobilenet_v2.decode_predictions(preds, top=5)[0]
+
+    # Extract words from the predictions (e.g. "sports_car" -> ["sports", "car"])
+    predicted_words = []
+    for _, label, _ in top_5:
+        words = label.lower().replace('_', ' ').replace('-', ' ').split()
+        predicted_words.extend(words)
+
+    # Check against our lists
+    blacklist_found = any(word in predicted_words for word in BLACKLIST)
+    plant_word_found = any(word in predicted_words for word in PLANT_WORDS)
+
+    # Logic: Reject if it contains a blacklisted word AND doesn't explicitly contain a plant word
+    if blacklist_found and not plant_word_found:
+        # Get the top prediction for the error message
+        top_prediction = top_5[0][1].replace('_', ' ').title()
+        return False, f"This looks like a **{top_prediction}**, not a plant leaf!"
+
+    return True, ""
+
+
+# -----------------
+# UI LOGIC
+# -----------------
 uploaded_file = st.file_uploader("Click here or drag and drop to select an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
@@ -268,10 +363,13 @@ if uploaded_file is not None:
     
     with st.spinner("Analyzing Leaf Health..."):
         # Validate if image is a plant
-        if not is_plant_image(image):
-            st.error("🚫 **Image Rejected:** This doesn't look like a natural plant leaf. Please upload a clear photo of a leaf from one of the supported species.")
+        is_valid, error_msg = is_plant_image(image)
+        
+        if not is_valid:
+            st.error(f"🚫 **Image Rejected:** {error_msg}")
         else:
-            # Preprocess image
+            # Preprocess image for Disease Model (MobileNet V1 typically uses the same preprocess, 
+            # but we explicitly use the generic mobilenet preprocess_input as originally used)
             image_array = np.array(image)
             pil_image = Image.fromarray(image_array).resize((224, 224))
             input_arr = tf.keras.preprocessing.image.img_to_array(pil_image)
@@ -279,7 +377,7 @@ if uploaded_file is not None:
             preprocessed = tf.keras.applications.mobilenet.preprocess_input(input_arr)
             
             # Predict
-            predictions = MODEL.predict(preprocessed)
+            predictions = DISEASE_MODEL.predict(preprocessed)
             predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
             confidence = float(np.max(predictions[0]))
             
