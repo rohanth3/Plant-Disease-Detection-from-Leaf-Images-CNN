@@ -4,7 +4,6 @@ from io import BytesIO
 from PIL import Image
 import streamlit as st
 
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
 import tensorflow as tf
 
 st.set_page_config(
