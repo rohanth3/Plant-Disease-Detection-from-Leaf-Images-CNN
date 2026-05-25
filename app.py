@@ -114,8 +114,8 @@ MODEL = load_model()
 
 def is_plant_image(image):
     """
-    Lightweight heuristic to check if an image is a plant.
-    Checks if at least 5% of the pixels fall into typical plant/leaf color ranges (Green, Yellow, Brown).
+    Advanced heuristic to check if an image is a natural plant.
+    Checks for plant color ranges AND natural texture (color variance).
     """
     # Convert image to HSV
     hsv_image = image.convert('HSV')
@@ -128,14 +128,26 @@ def is_plant_image(image):
     
     # Define valid plant color ranges in HSV (PIL hue is 0-255)
     # Green/Yellow/Brown hues usually fall between 15 (Brown/Orange) and 110 (Green/Cyan-Green)
-    # Saturation should be > 20 to avoid grays/whites/blacks
-    # Value should be > 20 to avoid completely dark pixels
     plant_mask = (h >= 15) & (h <= 110) & (s > 20) & (v > 20)
     
     plant_pixel_ratio = np.sum(plant_mask) / (h.shape[0] * h.shape[1])
     
-    # If less than 5% of the image is "plant colored", reject it
-    return plant_pixel_ratio > 0.05
+    # Check natural texture/variance: Data plots have flat colors (std near 0).
+    # Real photos of leaves have shadows, veins, and varying light causing high color variance.
+    if plant_pixel_ratio > 0:
+        hue_std = np.std(h[plant_mask])
+    else:
+        hue_std = 0
+
+    # Require at least 10% of the image to be plant colored
+    if plant_pixel_ratio < 0.10:
+        return False
+        
+    # Require color variance to reject flat synthetic colors (like heatmap bars)
+    if hue_std < 3.0:
+        return False
+        
+    return True
 
 uploaded_file = st.file_uploader("Click here or Drag and Drop to select an Image", type=["jpg", "jpeg", "png"])
 
