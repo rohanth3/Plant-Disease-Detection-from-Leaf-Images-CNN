@@ -76,15 +76,6 @@ if os.path.exists(BG_IMG_PATH):
 st.title("🌿 Plant Care")
 st.markdown("### Upload a photo of a plant leaf to identify potential diseases.")
 
-# Load Model
-@st.cache_resource
-def load_model():
-    MODEL_PATH = os.path.join(BASE_DIR, "models")
-    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-    return model
-
-MODEL = load_model()
-
 CLASS_NAMES = [
     "Apple Scab", "Apple Black Rot", "Apple Rust", "Apple Healthy",
     "Blueberry Healthy",
@@ -104,6 +95,48 @@ CLASS_NAMES = [
     "Tomato Target Spot", "Tomato Yellow Leaf Curl Virus", "Tomato Mosaic Virus", "Tomato Healthy",
 ]
 
+# Extract unique species for UI display
+SPECIES_LIST = sorted(list(set([name.split(' ')[0] for name in CLASS_NAMES])))
+
+with st.expander("ℹ️ See Supported Plants / Species"):
+    st.markdown("Our AI model is specially trained to detect diseases on the following plants. **Please only upload images of leaves from these species:**")
+    # Display in a nice grid or comma separated
+    st.write(" • " + " • ".join(SPECIES_LIST))
+
+# Load Model
+@st.cache_resource
+def load_model():
+    MODEL_PATH = os.path.join(BASE_DIR, "models")
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    return model
+
+MODEL = load_model()
+
+def is_plant_image(image):
+    """
+    Lightweight heuristic to check if an image is a plant.
+    Checks if at least 5% of the pixels fall into typical plant/leaf color ranges (Green, Yellow, Brown).
+    """
+    # Convert image to HSV
+    hsv_image = image.convert('HSV')
+    hsv_array = np.array(hsv_image)
+    
+    # Extract Hue, Saturation, Value channels
+    h = hsv_array[:, :, 0]
+    s = hsv_array[:, :, 1]
+    v = hsv_array[:, :, 2]
+    
+    # Define valid plant color ranges in HSV (PIL hue is 0-255)
+    # Green/Yellow/Brown hues usually fall between 15 (Brown/Orange) and 110 (Green/Cyan-Green)
+    # Saturation should be > 20 to avoid grays/whites/blacks
+    # Value should be > 20 to avoid completely dark pixels
+    plant_mask = (h >= 15) & (h <= 110) & (s > 20) & (v > 20)
+    
+    plant_pixel_ratio = np.sum(plant_mask) / (h.shape[0] * h.shape[1])
+    
+    # If less than 5% of the image is "plant colored", reject it
+    return plant_pixel_ratio > 0.05
+
 uploaded_file = st.file_uploader("Click here or Drag and Drop to select an Image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
@@ -111,18 +144,22 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption='', use_container_width=True)
     
-    with st.spinner("Processing Image..."):
-        # Preprocess image
-        image_array = np.array(image)
-        pil_image = Image.fromarray(image_array).resize((224, 224))
-        input_arr = tf.keras.preprocessing.image.img_to_array(pil_image)
-        input_arr = np.array([input_arr])
-        preprocessed = tf.keras.applications.mobilenet.preprocess_input(input_arr)
-        
-        # Predict
-        predictions = MODEL.predict(preprocessed)
-        predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
-        confidence = float(np.max(predictions[0]))
-        
-        st.markdown(f"<h3 style='text-align: center;'>{predicted_class}</h3>", unsafe_allow_html=True)
-        st.markdown(f"<h4 style='text-align: center; font-weight: normal; color: #e0e0e0;'>Confidence: <b style='color: white;'>{confidence:.2%}</b></h4>", unsafe_allow_html=True)
+    with st.spinner("Analyzing Image..."):
+        # Validate if image is a plant
+        if not is_plant_image(image):
+            st.error("🚫 **Image Rejected:** This doesn't look like a valid plant leaf! Please upload a clear photo of a leaf from one of the supported species.")
+        else:
+            # Preprocess image
+            image_array = np.array(image)
+            pil_image = Image.fromarray(image_array).resize((224, 224))
+            input_arr = tf.keras.preprocessing.image.img_to_array(pil_image)
+            input_arr = np.array([input_arr])
+            preprocessed = tf.keras.applications.mobilenet.preprocess_input(input_arr)
+            
+            # Predict
+            predictions = MODEL.predict(preprocessed)
+            predicted_class = CLASS_NAMES[np.argmax(predictions[0])]
+            confidence = float(np.max(predictions[0]))
+            
+            st.markdown(f"<h3 style='text-align: center;'>{predicted_class}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='text-align: center; font-weight: normal; color: #e0e0e0;'>Confidence: <b style='color: white;'>{confidence:.2%}</b></h4>", unsafe_allow_html=True)
