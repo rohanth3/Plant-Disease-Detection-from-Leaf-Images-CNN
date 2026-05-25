@@ -86,17 +86,31 @@ if os.path.exists(BG_IMG_PATH):
     }}
     
     /* Upload Box Styling */
-    .stFileUploader > div > div {{
-        background-color: rgba(77, 153, 0, 0.1) !important;
-        border: 2px dashed rgba(165, 214, 167, 0.5) !important;
+    [data-testid="stFileUploadDropzone"] {{
+        background-color: rgba(0, 0, 0, 0.4) !important;
+        border: 2px dashed rgba(165, 214, 167, 0.6) !important;
         border-radius: 16px !important;
         transition: all 0.3s ease-in-out;
         padding: 20px !important;
     }}
-    .stFileUploader > div > div:hover {{
-        background-color: rgba(77, 153, 0, 0.25) !important;
-        border-color: rgba(165, 214, 167, 0.9) !important;
+    [data-testid="stFileUploadDropzone"]:hover {{
+        background-color: rgba(77, 153, 0, 0.3) !important;
+        border-color: rgba(165, 214, 167, 1) !important;
         transform: translateY(-2px);
+    }}
+    
+    /* Upload Box Button and Text */
+    [data-testid="stFileUploadDropzone"] button {{
+        background-color: rgba(77, 153, 0, 0.9) !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+    }}
+    [data-testid="stFileUploadDropzone"] button:hover {{
+        background-color: rgba(40, 100, 20, 1) !important;
+    }}
+    [data-testid="stFileUploadDropzone"] div, [data-testid="stFileUploadDropzone"] span {{
+        color: #e8f5e9 !important;
     }}
 
     /* Expander Styling */
@@ -105,6 +119,18 @@ if os.path.exists(BG_IMG_PATH):
         border: 1px solid rgba(165, 214, 167, 0.2) !important;
         border-radius: 12px !important;
         margin-bottom: 20px;
+    }}
+    /* Fix Expander Header to never turn white */
+    div[data-testid="stExpander"] details summary {{
+        background-color: transparent !important;
+        color: #e8f5e9 !important;
+    }}
+    div[data-testid="stExpander"] details summary:hover {{
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }}
+    div[data-testid="stExpander"] details summary svg {{
+        fill: #e8f5e9 !important;
+        stroke: #e8f5e9 !important;
     }}
     
     /* Result Card Styling */
