@@ -115,7 +115,7 @@ MODEL = load_model()
 def is_plant_image(image):
     """
     Advanced heuristic to check if an image is a natural plant.
-    Checks for plant color ranges AND natural texture (color variance).
+    Checks for plant color ranges, green presence, natural texture, and saturation.
     """
     # Convert image to HSV
     hsv_image = image.convert('HSV')
@@ -126,25 +126,34 @@ def is_plant_image(image):
     s = hsv_array[:, :, 1]
     v = hsv_array[:, :, 2]
     
-    # Define valid plant color ranges in HSV (PIL hue is 0-255)
-    # Green/Yellow/Brown hues usually fall between 15 (Brown/Orange) and 110 (Green/Cyan-Green)
-    plant_mask = (h >= 15) & (h <= 110) & (s > 20) & (v > 20)
+    # 1. Broad plant color mask (Brown, Yellow, Green)
+    # PIL Hue: 15 to 90 covers brown, yellow, and green.
+    plant_mask = (h >= 15) & (h <= 90) & (s > 20) & (v > 20)
+    plant_ratio = np.sum(plant_mask) / (h.shape[0] * h.shape[1])
     
-    plant_pixel_ratio = np.sum(plant_mask) / (h.shape[0] * h.shape[1])
+    # 2. Strict Green mask (Leaves almost always have some distinct green)
+    # PIL Hue: 35 to 85 covers pure green to yellowish-green
+    green_mask = (h >= 35) & (h <= 85) & (s > 30) & (v > 30)
+    green_ratio = np.sum(green_mask) / (h.shape[0] * h.shape[1])
     
-    # Check natural texture/variance: Data plots have flat colors (std near 0).
-    # Real photos of leaves have shadows, veins, and varying light causing high color variance.
-    if plant_pixel_ratio > 0:
+    # 3. Reject if there's no green AND not enough broad plant colors
+    # (E.g. a notebook with a few yellow lines on a blanket will fail this)
+    if green_ratio < 0.02 and plant_ratio < 0.20:
+        return False
+        
+    # 4. Reject mostly grayscale/white/black images (like documents, notebooks)
+    # If 75% of the image has very low saturation, it's not a vibrant natural photo
+    if np.percentile(s, 75) < 25:
+        return False
+    
+    # 5. Check natural texture/variance: Data plots have flat colors (std near 0).
+    if plant_ratio > 0:
         hue_std = np.std(h[plant_mask])
     else:
         hue_std = 0
 
-    # Require at least 10% of the image to be plant colored
-    if plant_pixel_ratio < 0.10:
-        return False
-        
-    # Require color variance to reject flat synthetic colors (like heatmap bars)
-    if hue_std < 3.0:
+    # Require color variance to reject flat synthetic colors
+    if hue_std < 2.0:
         return False
         
     return True
